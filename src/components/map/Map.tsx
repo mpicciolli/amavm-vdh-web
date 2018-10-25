@@ -25,7 +25,7 @@ const polylineColor = (bp: BicyclePath): string => {
 
 const Map = ({ seasons3BpFetch }: { seasons3BpFetch: any }) => (
   <section className="Map">
-    <LeafletMap center={[45.516136, -73.656830]} zoom={13}>
+    <LeafletMap center={[45.502846, -73.568907]} zoom={13}>
       <TileLayer
         attribution="&amp;copy <a href=&quot;http://osm.org/copyright&quot;>OpenStreetMap</a> contributors"
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -39,5 +39,7 @@ const Map = ({ seasons3BpFetch }: { seasons3BpFetch: any }) => (
 );
 
 export default connect(() => ({
-  seasons3BpFetch: `${process.env.REACT_APP_API_PREFIX!}/api/v1/bicycle-paths?&limit=6000`,
+  seasons3BpFetch: {
+    url: `${process.env.REACT_APP_API_URL!}/api/v1/bicycle-paths?&limit=6000`,
+  },
 }))(Map);

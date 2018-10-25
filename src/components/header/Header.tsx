@@ -3,7 +3,7 @@ import './Header.css';
 
 const Header = () => (
   <header className="Header">
-    <h1>AMAVM VDH</h1>
+    <h1>VDH</h1>
   </header>
 );
 
