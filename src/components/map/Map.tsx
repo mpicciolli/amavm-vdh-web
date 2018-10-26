@@ -27,8 +27,8 @@ const Map = ({ seasons3BpFetch }: { seasons3BpFetch: any }) => (
   <section className="Map">
     <LeafletMap center={[45.502846, -73.568907]} zoom={13}>
       <TileLayer
-        attribution="&amp;copy <a href=&quot;http://osm.org/copyright&quot;>OpenStreetMap</a> contributors"
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution="&amp;copy <a href=&quot;https://wikimediafoundation.org/wiki/Maps_Terms_of_Use&quot;>Wikimedia</a>"
+        url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
       />
       { seasons3BpFetch.fulfilled &&
       seasons3BpFetch.value.items.map((x: BicyclePath) => {
