@@ -1,16 +1,12 @@
 import { LatLngExpression } from 'leaflet';
 import * as React from 'react';
 import { Map as LeafletMap, Polyline, TileLayer } from 'react-leaflet';
+import { Portal } from 'react-leaflet-portal';
 import { connect } from 'react-refetch';
 import * as bpData from 'src/data/bicycle-paths.json';
-import { BicyclePath, BicyclePathNetwork } from 'src/entities';
+import { BicyclePath } from 'src/entities';
 import './Map.css';
-
-export const Colors = {
-  [BicyclePathNetwork.Seasons3]: "#6bb26b",
-  [BicyclePathNetwork.Seasons4]: "#76b2d0",
-  [BicyclePathNetwork.Unknown]: "white",
-};
+import MapLegend, { Colors } from './MapLegend';
 
 const polylinePositions = (bp: BicyclePath): LatLngExpression[] => {
   return bp.geometry.coordinates[0].map((c: any) => ({
@@ -26,9 +22,12 @@ const Map = ({ seasons3BpFetch }: { seasons3BpFetch: any }) => (
         attribution="&amp;copy <a href=&quot;https://wikimediafoundation.org/wiki/Maps_Terms_of_Use&quot;>Wikimedia</a>"
         url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
       />
-      { (bpData.items as any).map((x: BicyclePath) => {
+      {(bpData.items as any).map((x: BicyclePath) => {
         return (<Polyline key={x.id} positions={polylinePositions(x)} color={Colors[x.network]} weight={2} />);
       })}
+      <Portal position="topright">
+        <MapLegend />
+      </Portal>
     </LeafletMap>
   </section>
 );
