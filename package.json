@@ -12,10 +12,13 @@
     "react-scripts-ts": "3.1.0"
   },
   "scripts": {
+    "prestart": "node refresh-bicycle-paths.js",
     "start": "react-scripts-ts start",
+    "prebuild": "node refresh-bicycle-paths.js",
     "build": "react-scripts-ts build",
     "test": "react-scripts-ts test --env=jsdom",
-    "eject": "react-scripts-ts eject"
+    "eject": "react-scripts-ts eject",
+    "refresh:data": "node refresh-bicycle-paths.js --force"
   },
   "devDependencies": {
     "@types/jest": "^23.3.7",
@@ -23,6 +26,8 @@
     "@types/react": "^16.4.18",
     "@types/react-dom": "^16.0.9",
     "@types/react-leaflet": "^1.1.6",
+    "dotenv": "^6.1.0",
+    "fs-extra": "^7.0.0",
     "typescript": "^3.1.3"
   }
 }
