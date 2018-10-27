@@ -1,6 +1,6 @@
 .Map {
-  display: flex;
-  flex: 1;
+  height: 100%;
+  padding-top: 55px;
 }
 
 .leaflet-container {
