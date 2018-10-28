@@ -18,8 +18,8 @@ const Season3Style = {
 
 const MapLegend = () => (
   <div className='MapLegend'>
-    <div className="Line" style={Season4Style}/><div className="Label">Réseau 4 Saisons (déneigé)</div>
-    <div className="Line" style={Season3Style}/><div className="Label">Réseau 3 Saisons</div>
+    <div className="Line" style={Season4Style}/><div className="Label">4 Saisons (déneigé)</div>
+    <div className="Line" style={Season3Style}/><div className="Label">3 Saisons</div>
   </div>
 );
 

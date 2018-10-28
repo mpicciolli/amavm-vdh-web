@@ -3,7 +3,7 @@ import './Header.css';
 
 const Header = () => (
   <header className="Header">
-    <h1>VDH</h1>
+    <h1>Vélo d'hiver Montréal</h1>
   </header>
 );
 
