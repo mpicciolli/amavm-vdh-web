@@ -7,9 +7,19 @@ const BICYCLE_PATHS_DATA = 'src/data/bicycle-paths.json';
 
 const downloadBicyclePaths = () => {
   fs.ensureDirSync(path.dirname(BICYCLE_PATHS_DATA));
-  const file = fs.createWriteStream(BICYCLE_PATHS_DATA, { flags: 'w' });
-  https.get(`${process.env.REACT_APP_API_URL}/api/v1/bicycle-paths?&limit=6000`, (response) => {
-    response.pipe(file);
+  https.get(`${process.env.REACT_APP_API_URL}/api/v1/bicycle-paths?&limit=10000`, (response) => {
+    let str = '';
+    response.on('data', function (chunk) {
+      str += chunk;
+    });
+    response.on('end', function () {
+      const bpData = JSON.parse(str);
+      const filteredData = bpData.items.map((x) => ({
+        geometry: x.geometry,
+        network: x.network,
+      }));
+      fs.writeFileSync(BICYCLE_PATHS_DATA, JSON.stringify(filteredData), { flags: 'w' });
+    });
   });
 };
 
