@@ -41,6 +41,7 @@ const downloadBicyclePaths = () => {
 
       const filteredData = Object.values(indexedPaths).filter((x) => !!x).map((x) => ({
         geometry: x.geometry,
+        id: x.id,
         network: x.network,
       }));
 

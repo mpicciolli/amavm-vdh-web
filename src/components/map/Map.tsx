@@ -1,85 +1,139 @@
 import { LatLngExpression } from 'leaflet';
 import * as React from 'react';
-import { Map as LeafletMap, Marker, Polyline, TileLayer } from 'react-leaflet';
+import { Map as LeafletMap, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
 import { Portal } from 'react-leaflet-portal';
-import { connect } from 'react-refetch';
 import * as bicyclePathsData from 'src/data/bicycle-paths.json';
-import { BicyclePath } from 'src/entities';
 import './Map.css';
 import MapLegend, { Colors } from './MapLegend';
 import MapObservations from './MapObservations';
-
-const polylinePositions = (bp: BicyclePath): LatLngExpression[] => {
-  return bp.geometry.coordinates[0].map((c: any) => ({
-    lat: c[1],
-    lng: c[0]
-  }));
-};
-
-const markerPosition = (observation: any): LatLngExpression => {
-  return {
-    lat: observation.position[1],
-    lng: observation.position[0],
-  };
-};
+import ObservationPopup from './ObservationPopup';
 
 export interface MapProps {
-  bicyclePaths: BicyclePath[];
-  observationsFetch: any;
-  onObservationSelected?: (value: string) => void;
+  center?: LatLngExpression;
+  zoom?: number;
+}
+
+interface MapState {
+  observations: any[];
   selectedObservationDuration: string;
 }
 
-const Map = ({ bicyclePaths, observationsFetch, onObservationSelected, selectedObservationDuration }: MapProps) => (
-  <section className="Map">
-    <LeafletMap center={[45.502846, -73.568907]} zoom={13}>
-      <TileLayer
-        attribution="&amp;copy <a href=&quot;https://wikimediafoundation.org/wiki/Maps_Terms_of_Use&quot;>Wikimedia</a>"
-        url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
-      />
-      {bicyclePaths.map((x: BicyclePath) => {
-        return (<Polyline key={x.id} positions={polylinePositions(x)} color={Colors[x.network]} weight={2} />);
-      })}
-      {observationsFetch.fulfilled && observationsFetch.value.items.map((x: any) => {
-        return (<Marker key={x.id}  position={markerPosition(x)} />);
-      })}
-      <Portal position="topright">
-        <MapLegend />
-        <MapObservations selected={selectedObservationDuration} onSelected={onObservationSelected} />
-      </Portal>
-    </LeafletMap>
-  </section>
-);
+export class Map extends React.Component<MapProps, MapState> {
 
-const MapWithBicyclePaths = (WrappedComponent) =>
-  (props) => (<WrappedComponent bicyclePaths={bicyclePathsData} {...props} />);
+  private observationsInterval;
 
-const MapWithSelectedObservations = (WrappedComponent) => {
-  return class extends React.Component<any, any> {
-    public constructor(props) {
-      super(props);
-      this.handleObservationSelected = this.handleObservationSelected.bind(this);
-      this.state = {
-        selectedObservationDuration: "2h",
-      };
+  public constructor(props) {
+    super(props);
+    this.state = {
+      observations: [],
+      selectedObservationDuration: "2h",
+    };
+    this.handleSelectedObservationSelected = this.handleSelectedObservationSelected.bind(this);
+  }
+
+  public componentDidMount() {
+    if (this.observationsInterval) {
+      clearInterval(this.observationsInterval);
+      this.observationsInterval = undefined;
+    }
+    this.loadObservations();
+    this.observationsInterval = setInterval(
+      () => this.loadObservations(),
+      parseInt(process.env.REACT_APP_REFRESH_INTERVAL || "30000", 10));
+  }
+
+  public componentWillUnmount() {
+    if (this.observationsInterval) {
+      clearInterval(this.observationsInterval);
+      this.observationsInterval = undefined;
+    }
+  }
+
+  public render() {
+    let { center, zoom } = this.props;
+    center = center || [45.502846, -73.568907];
+    zoom = zoom || 14;
+    const { observations } = this.state;
+    return (
+      <section className="Map">
+        <LeafletMap center={center} zoom={zoom}>
+          <TileLayer
+            attribution="&amp;copy <a href=&quot;https://wikimediafoundation.org/wiki/Maps_Terms_of_Use&quot;>Wikimedia</a>"
+            url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
+          />
+          {bicyclePathsData.map((x) => {
+            return (<Polyline key={x.id} positions={this.polylinePositions(x)} color={Colors[x.network]} weight={2} />);
+          })}
+          {observations.map((x: any) => {
+            return (
+              <Marker key={x.id} position={this.markerPosition(x)}>
+                <Popup onOpen={() => this.handleOpenPopup(x)} onClose={() => this.handleOpenPopup()}>
+                  <ObservationPopup observation={x} />
+                </Popup>
+              </Marker>);
+          })}
+          <Portal position="topright">
+            <MapLegend />
+            <MapObservations selected={this.state.selectedObservationDuration} onSelected={this.handleSelectedObservationSelected} />
+          </Portal>
+        </LeafletMap>
+      </section>);
+  }
+
+  private handleSelectedObservationSelected(value: string) {
+    this.setState(
+      { selectedObservationDuration: value },
+      () => this.loadObservations());
+  }
+
+  private handleOpenPopup(observation?: any) {
+    const searchParams = new URLSearchParams(location.search);
+    if (observation) {
+      searchParams.set("observationId", observation.id);
+    } else {
+      searchParams.delete("observationId");
+    }
+    history.pushState(null, '', location.pathname + '?' + searchParams.toString());
+  }
+
+  private async loadObservations() {
+    const startTs = this.getObservationsStartTs();
+    const response = await fetch(
+      `${process.env.REACT_APP_API_URL}/api/v1/observations?startTs=${startTs}&sort=timestamp-desc`);
+    this.setState({ observations: (await response.json()).items });
+  }
+
+  private getObservationsStartTs() {
+    const now = Math.round(new Date().getTime() / 1000);
+    switch (this.state.selectedObservationDuration) {
+      case "2h":
+        return now - (2 * 60 * 60);
+      case "4h":
+        return now - (4 * 60 * 60);
+      case "12h":
+        return now - (12 * 60 * 60);
+      case "1d":
+        return now - (24 * 60 * 60);
+      case "7d":
+        return now - now; // (7 * 24 * 60 * 60);
     }
 
-    public render() {
-      // tslint:disable-next-line:jsx-no-lambda
-      return (<WrappedComponent onObservationSelected={this.handleObservationSelected} selectedObservationDuration={this.state.selectedObservationDuration} {...this.props} />);
-    }
+    return now;
+  }
 
-    private handleObservationSelected(value: string) {
-      this.setState({ selectedObservationDuration: value });
-    }
+  private markerPosition(observation: any): LatLngExpression {
+    return {
+      lat: observation.position[1],
+      lng: observation.position[0],
+    };
   };
-};
 
-export default MapWithBicyclePaths(
-  MapWithSelectedObservations(
-    connect((props) => ({
-      observationsFetch: {
-        refreshInterval: parseInt(process.env.REACT_APP_REFRESH_INTERVAL || "30000", 10),
-        url: `${process.env.REACT_APP_API_URL}/api/v1/observations`,
-      },
-    }))(Map)));
+  private polylinePositions(bp: any): LatLngExpression[] {
+    return bp.geometry.coordinates[0].map((c: any) => ({
+      lat: c[1],
+      lng: c[0]
+    }));
+  };
+}
+
+export default Map;
