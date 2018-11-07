@@ -3,32 +3,34 @@ import * as React from 'react';
 import { Map as LeafletMap, Marker, Polyline, Popup, TileLayer } from 'react-leaflet';
 import { Portal } from 'react-leaflet-portal';
 import * as bicyclePathsData from 'src/data/bicycle-paths.json';
+import { ReportedObservation } from 'src/entities';
 import './Map.css';
 import MapLegend, { Colors } from './MapLegend';
 import MapObservations from './MapObservations';
 import ObservationPopup from './ObservationPopup';
 
-export interface MapProps {
-  center?: LatLngExpression;
-  zoom?: number;
-}
-
 interface MapState {
-  observations: any[];
+  center?: LatLngExpression;
+  observations: ReportedObservation[];
   selectedObservationDuration: string;
 }
 
-export class Map extends React.Component<MapProps, MapState> {
+export class Map extends React.Component<any, MapState> {
 
   private observationsInterval;
+  private popupRefs: Record<string, any> = {};
+  private mapRef = React.createRef() as any;
 
   public constructor(props) {
     super(props);
     this.state = {
+      center: [45.502846, -73.568907],
       observations: [],
       selectedObservationDuration: "2h",
     };
     this.handleSelectedObservationSelected = this.handleSelectedObservationSelected.bind(this);
+    this.handleOpenPopup = this.handleOpenPopup.bind(this);
+    this.setPopupRef = this.setPopupRef.bind(this);
   }
 
   public componentDidMount() {
@@ -50,24 +52,21 @@ export class Map extends React.Component<MapProps, MapState> {
   }
 
   public render() {
-    let { center, zoom } = this.props;
-    center = center || [45.502846, -73.568907];
-    zoom = zoom || 14;
     const { observations } = this.state;
     return (
       <section className="Map">
-        <LeafletMap center={center} zoom={zoom}>
+        <LeafletMap ref={this.mapRef} animate={true} center={this.state.center} zoom={14}>
           <TileLayer
             attribution="&amp;copy <a href=&quot;https://wikimediafoundation.org/wiki/Maps_Terms_of_Use&quot;>Wikimedia</a>"
             url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
           />
           {bicyclePathsData.map((x) => {
-            return (<Polyline key={x.id} positions={this.polylinePositions(x)} color={Colors[x.network]} weight={2} />);
+            return (<Polyline key={x.id} positions={this.polylinePositions(x.geometry.coordinates[0])} color={Colors[x.network]} weight={2} />);
           })}
-          {observations.map((x: any) => {
+          {observations.map((x) => {
             return (
               <Marker key={x.id} position={this.markerPosition(x)}>
-                <Popup onOpen={() => this.handleOpenPopup(x)} onClose={() => this.handleOpenPopup()}>
+                <Popup observation={x} ref={this.setPopupRef} onOpen={this.handleOpenPopup.bind(this, x)} onClose={this.handleOpenPopup}>
                   <ObservationPopup observation={x} />
                 </Popup>
               </Marker>);
@@ -86,21 +85,51 @@ export class Map extends React.Component<MapProps, MapState> {
       () => this.loadObservations());
   }
 
-  private handleOpenPopup(observation?: any) {
+  private handleOpenPopup(observation?: ReportedObservation) {
     const searchParams = new URLSearchParams(location.search);
+    let newUrl = location.pathname;
     if (observation) {
       searchParams.set("observationId", observation.id);
-    } else {
-      searchParams.delete("observationId");
+      newUrl = `${newUrl}?${searchParams.toString()}`;
+      this.setState({ center: { lat: observation.position[1], lng: observation.position[0]} })
     }
-    history.pushState(null, '', location.pathname + '?' + searchParams.toString());
+    history.pushState(null, '', newUrl);
+  }
+
+  private setPopupRef(element: any) {
+    if (element && element.props) {
+      this.popupRefs[element.props.observation.id] = element;
+    }
   }
 
   private async loadObservations() {
     const startTs = this.getObservationsStartTs();
     const response = await fetch(
       `${process.env.REACT_APP_API_URL}/api/v1/observations?startTs=${startTs}&sort=timestamp-desc`);
-    this.setState({ observations: (await response.json()).items });
+    const observations = (await response.json()).items;
+    const searchParams = new URLSearchParams(location.search);
+    const selectedObservationId = searchParams.get("observationId");
+    let selectedOperation: ReportedObservation | undefined;
+    if (selectedObservationId) {
+      if (!observations.some((x) => x.id === selectedObservationId)) {
+        const selectedObsResponse = await fetch(
+          `${process.env.REACT_APP_API_URL}/api/v1/observations/${selectedObservationId}`);
+        selectedOperation = await selectedObsResponse.json();
+        observations.push(selectedOperation);
+      }
+    }
+    this.setState({
+      center: selectedOperation && { lat: selectedOperation.position[1], lng: selectedOperation.position[0]},
+      observations,
+    }, () => {
+      if (selectedObservationId) {
+        if (this.popupRefs[selectedObservationId]) {
+          this.mapRef.current.leafletElement.openPopup(
+            this.popupRefs[selectedObservationId].leafletElement,
+            this.markerPosition(this.popupRefs[selectedObservationId].props.observation));
+        }
+      }
+    });
   }
 
   private getObservationsStartTs() {
@@ -115,21 +144,21 @@ export class Map extends React.Component<MapProps, MapState> {
       case "1d":
         return now - (24 * 60 * 60);
       case "7d":
-        return now - now; // (7 * 24 * 60 * 60);
+        return now - (7 * 24 * 60 * 60);
     }
 
     return now;
   }
 
-  private markerPosition(observation: any): LatLngExpression {
+  private markerPosition(observation: ReportedObservation): LatLngExpression {
     return {
       lat: observation.position[1],
       lng: observation.position[0],
     };
   };
 
-  private polylinePositions(bp: any): LatLngExpression[] {
-    return bp.geometry.coordinates[0].map((c: any) => ({
+  private polylinePositions(positions: number[][]): LatLngExpression[] {
+    return positions.map((c) => ({
       lat: c[1],
       lng: c[0]
     }));
