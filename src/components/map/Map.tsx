@@ -58,8 +58,8 @@ export class Map extends React.Component<any, MapState> {
             attribution="&amp;copy <a href=&quot;https://wikimediafoundation.org/wiki/Maps_Terms_of_Use&quot;>Wikimedia</a>"
             url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
           />
-          {bicyclePathsData.map((x) => {
-            return (<Polyline key={x.id} positions={this.polylinePositions(x.geometry.coordinates[0])} color={Colors[x.network]} weight={2} />);
+          {bicyclePathsData.features.map((x, index) => {
+            return (<Polyline key={index} positions={this.polylinePositions(x.geometry.coordinates[0])} color={Colors[x.properties.network]} weight={2} />);
           })}
           {observations.map((x) => {
             return (<ObservationMarker key={x.id} observation={x} opened={x.id === this.getSelectedObservationId()} onPopupOpen={this.handleOpenPopup} onPopupClose={this.handleOpenPopup} />);
