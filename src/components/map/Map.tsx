@@ -81,7 +81,7 @@ export class Map extends React.Component<any, MapState> {
   private handleOpenPopup(arg?: {observation: ReportedObservation}) {
     this.setSelectedObservationId(arg && arg.observation && arg.observation.id);
     if (arg && arg.observation) {
-      this.setState({ center: { lat: arg.observation.position[1], lng: arg.observation.position[0]} })
+      this.setState({ center: { lat: arg.observation.position[0], lng: arg.observation.position[1]} })
     }
   }
 

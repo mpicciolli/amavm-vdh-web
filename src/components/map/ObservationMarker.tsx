@@ -41,8 +41,8 @@ class ObservationMarker extends React.Component<ILeafletContext & ObservationMar
 
   private markerPosition(observation: ReportedObservation): LatLngExpression {
     return {
-      lat: observation.position[1],
-      lng: observation.position[0],
+      lat: observation.position[0],
+      lng: observation.position[1],
     };
   };
 
